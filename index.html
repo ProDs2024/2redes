@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Desafio Lógico 2.0</title>
+    <title>Desafio Lógico Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Carrega os níveis a partir do ficheiro externo -->
@@ -38,7 +38,7 @@
 
     <!-- Start Screen -->
     <div id="start-screen" class="w-full max-w-lg mx-auto text-center">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-cyan-400 mb-4">Desafio Lógico</h1>
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-cyan-400 mb-4">Desafio Lógico final</h1>
         <p class="text-lg text-gray-300 mb-8">Insira seu nome para começar a jornada!</p>
         <input type="text" id="player-name" placeholder="Digite seu nome aqui" class="w-full max-w-sm text-center bg-gray-800 border-2 border-gray-600 rounded-lg p-3 text-xl focus:border-cyan-400 focus:outline-none mb-6">
         <button id="start-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-10 rounded-lg text-2xl shadow-lg transition-transform transform hover:scale-105">Começar</button>
@@ -89,7 +89,7 @@
             <h2 class="text-3xl font-bold mb-4 text-center text-cyan-400">Como Jogar</h2>
             <ul class="list-disc list-inside space-y-3 text-gray-300">
                 <li><strong>Objetivo Principal:</strong> Acenda as <span class="text-yellow-400 font-semibold">luzes</span>, responda às <span class="text-purple-400 font-semibold">perguntas</span> e chegue à <span class="text-green-500 font-semibold">saída</span>.</li>
-                <li><strong>O Caçador:</strong> A partir do nível 13, um <span class="text-red-500 font-semibold">Caçador</span> aparecerá! A cada movimento seu, ele se aproxima. Não deixe que ele te alcance!</li>
+                <li><strong>O Caçador:</strong> A partir do nível 13, um <span class="text-red-500 font-semibold">Caçador</span> aparecerá! Ele se move quando você avança. Não deixe que ele te alcance!</li>
                 <li><strong>Pontuação:</strong> Seja eficiente! Menos movimentos para resolver um nível = mais pontos.</li>
                 <li><strong>Vidas:</strong> Você tem 3 vidas. Respostas erradas e ser pego pelo Caçador custam uma vida.</li>
             </ul>
@@ -136,6 +136,9 @@
 
 
     <script>
+    // Adiciona um listener para garantir que o script só rode depois que a página carregar
+    window.addEventListener('DOMContentLoaded', () => {
+        
         // --- DOM Elements ---
         const startScreen = document.getElementById('start-screen');
         const mainGameUI = document.getElementById('main-game-ui');
@@ -342,11 +345,13 @@
         
         function executeMove(action) {
             levelMoves++;
+            let moved = false;
             if (action === 'forward') {
                 let newX = bot.x, newY = bot.y;
                 if (bot.dir === DIR.UP) newY--; else if (bot.dir === DIR.RIGHT) newX++; else if (bot.dir === DIR.DOWN) newY++; else if (bot.dir === DIR.LEFT) newX--;
                 if (newY >= 0 && newY < grid.length && newX >= 0 && newX < grid[0].length && grid[newY][newX] !== TILE.WALL) {
                     bot.x = newX; bot.y = newY;
+                    moved = true;
                 }
             } else if (action === 'left') {
                 bot.dir = (bot.dir + 3) % 4;
@@ -358,7 +363,7 @@
                 } else { showMessage("Não há nada para acender aqui."); }
             }
             
-            if (levels[currentLevelIndex].hunterStart) {
+            if (levels[currentLevelIndex].hunterStart && moved) {
                 moveHunter();
             }
             
@@ -470,7 +475,7 @@
         function displayRaceStep(level, isFinalBoss = false) {
             if (currentRaceStep >= level.questions.length) {
                 const score = isFinalBoss ? 500 : 250;
-                const message = isFinalBoss ? `Núcleo Lógico Dominado! +${score} pontos` : `Você venceu a corrida! +${score} pontos`;
+                const message = isFinalBoss ? `Núcleo Lógico Dominado de verdade agora! +${score} pontos` : `Você venceu a corrida! +${score} pontos`;
                 totalScore += score;
                 updateScoreDisplay();
                 showMessage(message, true);
@@ -577,6 +582,7 @@
 
         // --- Initialize Game ---
         showStartScreen();
+    });
     </script>
 </body>
 </html>
