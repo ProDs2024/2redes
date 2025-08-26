@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio Lógico 2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Carrega os níveis a partir do ficheiro externo -->
+    <script src="./levels.js" defer></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .bot {
+            transition: transform 0.3s linear;
+            width: 70%;
+            height: 70%;
+        }
+        .race-path {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .race-path:hover {
+            transform: translateY(-5px);
+            border-color: #facc15;
+        }
+        #race-bot {
+            transition: transform 0.5s ease-in-out;
+        }
+        #timer-bar {
+            transition: width 0.2s linear;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="w-full max-w-lg mx-auto text-center">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-cyan-400 mb-4">Desafio Lógico</h1>
+        <p class="text-lg text-gray-300 mb-8">Insira seu nome para começar a jornada!</p>
+        <input type="text" id="player-name" placeholder="Digite seu nome aqui" class="w-full max-w-sm text-center bg-gray-800 border-2 border-gray-600 rounded-lg p-3 text-xl focus:border-cyan-400 focus:outline-none mb-6">
+        <button id="start-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-10 rounded-lg text-2xl shadow-lg transition-transform transform hover:scale-105">Começar</button>
+    </div>
+
+    <!-- Main Game UI (hidden initially) -->
+    <div id="main-game-ui" class="hidden w-full">
+        <div class="w-full max-w-2xl mx-auto text-center mb-4">
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400 mb-2">Light Bot: Desafio Lógico</h1>
+            <div class="flex justify-around items-center text-lg sm:text-xl font-semibold">
+                <div id="level-display">Nível 1</div>
+                <div id="score-display">Pontuação: 0</div>
+                <div id="lives-display">Vidas: ❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <!-- Light Bot Game Container -->
+        <div id="light-bot-container" class="w-full max-w-xs sm:max-w-sm mx-auto">
+            <div id="game-board" class="grid grid-cols-5 gap-1 bg-gray-800 p-2 rounded-lg shadow-lg mb-4"></div>
+            <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-3">
+                <button id="move-forward" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg shadow-md text-sm sm:text-base">Avançar</button>
+                <button id="turn-left" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg shadow-md text-sm sm:text-base">Girar ⬅️</button>
+                <button id="turn-right" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg shadow-md text-sm sm:text-base">Girar ➡️</button>
+                <button id="light-up" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 sm:py-3 sm:px-6 rounded-lg shadow-md text-sm sm:text-base">Acender</button>
+            </div>
+        </div>
+
+        <!-- Race & Final Boss Container -->
+        <div id="race-level-container" class="hidden text-center w-full max-w-lg mx-auto">
+            <h2 id="race-progress" class="text-xl font-bold mb-2"></h2>
+            <h3 id="race-question" class="text-lg sm:text-xl font-semibold mb-4 h-20"></h3>
+            <div id="race-paths" class="flex justify-around items-center gap-2 sm:gap-4"></div>
+            <div id="final-boss-timer" class="w-full bg-gray-700 rounded-full h-4 mt-4 hidden">
+                <div id="timer-bar" class="bg-red-500 h-4 rounded-full" style="width: 100%"></div>
+            </div>
+            <div class="mt-6 h-24 relative">
+                <div id="race-bot" class="w-16 h-16 bg-cyan-400 rounded-full mx-auto flex items-center justify-center text-4xl absolute bottom-0 left-1/2 -translate-x-1/2">🤖</div>
+            </div>
+        </div>
+        
+        <!-- Message Area -->
+        <div id="message-area" class="h-8 text-center text-lg font-medium mt-4"></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="instructions-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 md:p-8 w-full max-w-lg text-left">
+            <h2 class="text-3xl font-bold mb-4 text-center text-cyan-400">Como Jogar</h2>
+            <ul class="list-disc list-inside space-y-3 text-gray-300">
+                <li><strong>Objetivo Principal:</strong> Acenda as <span class="text-yellow-400 font-semibold">luzes</span>, responda às <span class="text-purple-400 font-semibold">perguntas</span> e chegue à <span class="text-green-500 font-semibold">saída</span>.</li>
+                <li><strong>O Caçador:</strong> A partir do nível 13, um <span class="text-red-500 font-semibold">Caçador</span> aparecerá! A cada movimento seu, ele se aproxima. Não deixe que ele te alcance!</li>
+                <li><strong>Pontuação:</strong> Seja eficiente! Menos movimentos para resolver um nível = mais pontos.</li>
+                <li><strong>Vidas:</strong> Você tem 3 vidas. Respostas erradas e ser pego pelo Caçador custam uma vida.</li>
+            </ul>
+            <div class="text-center mt-8">
+                <button id="play-button" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-10 rounded-lg text-xl">Entendi, vamos jogar!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="story-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 md:p-8 w-full max-w-lg text-center">
+            <h2 class="text-3xl font-bold mb-4 text-red-500">ALERTA: NÚCLEO LÓGICO DETECTADO</h2>
+            <p class="text-lg text-gray-300 mb-6">Você chegou ao coração do sistema. O firewall final exige perfeição. Não há margem para erros. Cada passo deve ser preciso, cada resposta, instantânea. Um único deslize e o sistema reiniciará completamente. Mostre que sua lógica é absoluta!</p>
+            <div class="text-center mt-8">
+                <button id="start-final-boss-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-xl">Enfrentar o Desafio Final</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="question-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 md:p-8 w-full max-w-md text-center">
+            <h2 id="question-text" class="text-xl md:text-2xl font-bold mb-6"></h2>
+            <div id="answers-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+    
+    <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-orange-900 border-2 border-orange-500 rounded-lg shadow-2xl p-8 w-full max-w-md text-center">
+            <h2 class="text-4xl font-bold mb-4">A LUZ SE APAGOU...</h2>
+            <p id="game-over-message" class="text-lg mb-6"></p>
+            <button id="restart-button" class="bg-white text-orange-900 font-bold py-3 px-8 rounded-lg text-xl hover:bg-gray-200">Iluminar Novamente</button>
+        </div>
+    </div>
+    
+    <div id="victory-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-green-900 border-2 border-green-500 rounded-lg shadow-2xl p-8 w-full max-w-md text-center">
+            <h2 class="text-4xl font-bold mb-4 text-yellow-300">VITÓRIA!</h2>
+            <p id="victory-message" class="text-xl mb-2"></p>
+            <p id="final-score" class="text-3xl font-bold text-white mb-4"></p>
+            <p id="final-time" class="text-lg text-gray-300 mb-6"></p>
+            <button id="play-again-button" class="bg-white text-green-900 font-bold py-3 px-8 rounded-lg text-xl hover:bg-gray-200">Jogar Novamente</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const mainGameUI = document.getElementById('main-game-ui');
+        const playerNameInput = document.getElementById('player-name');
+        const startButton = document.getElementById('start-button');
+        const instructionsModal = document.getElementById('instructions-modal');
+        const playButton = document.getElementById('play-button');
+        const storyModal = document.getElementById('story-modal');
+        const startFinalBossButton = document.getElementById('start-final-boss-button');
+        const lightBotContainer = document.getElementById('light-bot-container');
+        const raceLevelContainer = document.getElementById('race-level-container');
+        const gameBoard = document.getElementById('game-board');
+        const levelDisplay = document.getElementById('level-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
+        const messageArea = document.getElementById('message-area');
+        const questionModal = document.getElementById('question-modal');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.getElementById('answers-container');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const victoryModal = document.getElementById('victory-modal');
+        const victoryMessage = document.getElementById('victory-message');
+        const finalScore = document.getElementById('final-score');
+        const finalTime = document.getElementById('final-time');
+        const playAgainButton = document.getElementById('play-again-button');
+        const finalBossTimer = document.getElementById('final-boss-timer');
+        const timerBar = document.getElementById('timer-bar');
+
+        // --- Game Constants ---
+        const TILE = { EMPTY: 0, WALL: 1, LIGHT_OFF: 2, LIGHT_ON: 3, QUESTION: 4, DOOR_CLOSED: 5, DOOR_OPEN: 6 };
+        const DIR = { UP: 0, RIGHT: 1, DOWN: 2, LEFT: 3 };
+        const INITIAL_LIVES = 3;
+
+        // --- Game State ---
+        let playerName = '';
+        let currentLevelIndex = 0;
+        let lives = INITIAL_LIVES;
+        let totalScore = 0;
+        let levelMoves = 0;
+        let startTime = null;
+        let bot = { x: 0, y: 0, dir: DIR.RIGHT };
+        let hunter = { x: 0, y: 0 };
+        let grid = [];
+        let currentQuestion = null;
+        let timerInterval = null;
+        
+        // --- Core Game Functions ---
+        function showStartScreen() {
+            mainGameUI.classList.add('hidden');
+            gameOverModal.classList.add('hidden');
+            instructionsModal.classList.add('hidden');
+            victoryModal.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            playerNameInput.focus();
+        }
+
+        function startGame() {
+            playerName = playerNameInput.value.trim();
+            if (playerName === '') { playerName = 'Herói da Lógica'; }
+            startScreen.classList.add('hidden');
+            instructionsModal.classList.remove('hidden');
+        }
+
+        function playGame() {
+            instructionsModal.classList.add('hidden');
+            mainGameUI.classList.remove('hidden');
+            currentLevelIndex = 0;
+            lives = INITIAL_LIVES;
+            totalScore = 0;
+            startTime = new Date(); // Inicia o cronómetro
+            updateLivesDisplay();
+            updateScoreDisplay();
+            loadLevel(currentLevelIndex);
+        }
+
+        function loadLevel(levelIndex) {
+            if (timerInterval) clearInterval(timerInterval);
+            lightBotContainer.classList.add('hidden');
+            raceLevelContainer.classList.add('hidden');
+
+            if (levelIndex >= levels.length) {
+                const endTime = new Date();
+                const duration = Math.floor((endTime - startTime) / 1000);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+
+                victoryMessage.textContent = `Parabéns, ${playerName}! Sua lógica iluminou o caminho!`;
+                finalScore.textContent = `Pontuação Final: ${totalScore}`;
+                finalTime.textContent = `Tempo: ${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+                victoryModal.classList.remove('hidden');
+                mainGameUI.classList.add('hidden');
+                return;
+            }
+
+            const level = levels[levelIndex];
+            levelMoves = 0; 
+            
+            const raceLevelNumber = levels.findIndex(l => l.type === 'race') + 1;
+            const finalBossLevelNumber = levels.findIndex(l => l.type === 'final_race') + 1;
+
+            if(level.type === 'race') levelDisplay.textContent = `Nível ${raceLevelNumber}: Mini-Chefe`;
+            else if(level.type === 'final_race') levelDisplay.textContent = `Nível ${finalBossLevelNumber}: CHEFE FINAL`;
+            else levelDisplay.textContent = `Nível ${levelIndex + 1}`;
+
+            if(level.questions) level.questions.forEach(q => q.asked = false);
+
+            if (level.type === 'final_race') {
+                storyModal.classList.remove('hidden');
+            } else if (level.type === 'race') {
+                raceLevelContainer.classList.remove('hidden');
+                finalBossTimer.classList.add('hidden');
+                startRaceLevel(level);
+            } else {
+                lightBotContainer.classList.remove('hidden');
+                grid = level.grid.map(row => [...row]);
+                bot = { ...level.start };
+                if (level.hunterStart) {
+                    hunter = { ...level.hunterStart };
+                }
+                render();
+            }
+        }
+        
+        function updateScoreDisplay() { scoreDisplay.textContent = `Pontuação: ${totalScore}`; }
+        function updateLivesDisplay() { livesDisplay.innerHTML = `Vidas: ${'❤️'.repeat(lives)}${'🖤'.repeat(INITIAL_LIVES - lives)}`; }
+
+        function handleIncorrectAnswer() {
+            lives--;
+            updateLivesDisplay();
+            if (lives <= 0) {
+                gameOverMessage.textContent = `A lógica é um caminho de tentativas. Não desista, ${playerName}! Tente novamente e ilumine seu conhecimento.`;
+                gameOverModal.classList.remove('hidden');
+            } else {
+                showMessage("Você perdeu uma vida!", false);
+                const level = levels[currentLevelIndex];
+                if (level.type !== 'race' && level.type !== 'final_race') {
+                    bot = { ...level.start };
+                    if (level.hunterStart) {
+                        hunter = { ...level.hunterStart };
+                    }
+                    render();
+                }
+            }
+        }
+        
+        // --- Light Bot Functions ---
+        function render() {
+            gameBoard.innerHTML = '';
+            gameBoard.className = `grid grid-cols-${grid[0].length} gap-1 bg-gray-800 p-2 rounded-lg shadow-lg mb-4`;
+            grid.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'aspect-square w-full flex items-center justify-center';
+                    switch(cell) {
+                        case TILE.WALL: cellDiv.classList.add('bg-gray-700'); break;
+                        case TILE.LIGHT_OFF: cellDiv.classList.add('bg-yellow-900'); break;
+                        case TILE.LIGHT_ON: cellDiv.classList.add('bg-yellow-400', 'shadow-lg'); cellDiv.style.boxShadow = '0 0 10px #facc15'; break;
+                        case TILE.QUESTION: cellDiv.classList.add('bg-purple-700'); cellDiv.innerHTML = '<span class="text-xl sm:text-2xl font-bold">?</span>'; break;
+                        case TILE.DOOR_CLOSED: cellDiv.classList.add('bg-red-800'); break;
+                        case TILE.DOOR_OPEN: cellDiv.classList.add('bg-green-600'); break;
+                        default: cellDiv.classList.add('bg-gray-600');
+                    }
+                    if (bot.x === x && bot.y === y) {
+                        const botDiv = document.createElement('div');
+                        botDiv.className = 'bot bg-cyan-400 rounded-full flex items-center justify-center';
+                        botDiv.style.transform = `rotate(${bot.dir * 90}deg)`;
+                        botDiv.innerHTML = `<svg viewBox="0 0 24 24" width="70%" height="70%"><polygon points="12,2 20,12 14,12 14,22 10,22 10,12 4,12" fill="#083344"/></svg>`;
+                        cellDiv.appendChild(botDiv);
+                    }
+                    if (levels[currentLevelIndex].hunterStart && hunter.x === x && hunter.y === y) {
+                        const hunterDiv = document.createElement('div');
+                        hunterDiv.className = 'w-3/4 h-3/4 bg-red-600 rounded-md';
+                        cellDiv.appendChild(hunterDiv);
+                    }
+                    gameBoard.appendChild(cellDiv);
+                });
+            });
+        }
+
+        function checkAndOpenDoor() {
+            const lightsLeft = grid.flat().some(cell => cell === TILE.LIGHT_OFF);
+            const allQuestionsAnswered = levels[currentLevelIndex].questions.every(q => q.asked);
+            if (!lightsLeft && allQuestionsAnswered) {
+                for (let y = 0; y < grid.length; y++) {
+                    for (let x = 0; x < grid[y].length; x++) {
+                        if (grid[y][x] === TILE.DOOR_CLOSED) {
+                            grid[y][x] = TILE.DOOR_OPEN;
+                            showMessage("Luzes e lógica OK! A porta se abriu!", true);
+                            render();
+                            return;
+                        }
+                    }
+                }
+            } else if (!lightsLeft && !allQuestionsAnswered) {
+                showMessage("Todas as luzes estão acesas. Agora responda às perguntas!", false);
+            }
+        }
+        
+        function executeMove(action) {
+            levelMoves++;
+            if (action === 'forward') {
+                let newX = bot.x, newY = bot.y;
+                if (bot.dir === DIR.UP) newY--; else if (bot.dir === DIR.RIGHT) newX++; else if (bot.dir === DIR.DOWN) newY++; else if (bot.dir === DIR.LEFT) newX--;
+                if (newY >= 0 && newY < grid.length && newX >= 0 && newX < grid[0].length && grid[newY][newX] !== TILE.WALL) {
+                    bot.x = newX; bot.y = newY;
+                }
+            } else if (action === 'left') {
+                bot.dir = (bot.dir + 3) % 4;
+            } else if (action === 'right') {
+                bot.dir = (bot.dir + 1) % 4;
+            } else if (action === 'light') {
+                if (grid[bot.y][bot.x] === TILE.LIGHT_OFF) {
+                    grid[bot.y][bot.x] = TILE.LIGHT_ON;
+                } else { showMessage("Não há nada para acender aqui."); }
+            }
+            
+            if (levels[currentLevelIndex].hunterStart) {
+                moveHunter();
+            }
+            
+            render();
+
+            if (grid[bot.y][bot.x] === TILE.DOOR_OPEN) {
+                const levelScore = Math.max(10, 150 - (levelMoves * 5));
+                totalScore += levelScore;
+                updateScoreDisplay();
+                showMessage(`Nível Concluído! +${levelScore} pontos`, true);
+                setTimeout(() => { currentLevelIndex++; loadLevel(currentLevelIndex); }, 1500);
+                return; 
+            }
+            
+            if (action === 'light') checkAndOpenDoor();
+
+            if (grid[bot.y][bot.x] === TILE.QUESTION) {
+                const unasked = levels[currentLevelIndex].questions.filter(q => !q.asked);
+                if (unasked.length > 0) {
+                    currentQuestion = unasked[0];
+                    displayQuestion(currentQuestion);
+                }
+            }
+        }
+
+        function displayQuestion(q) {
+            questionText.textContent = q.question;
+            answersContainer.innerHTML = '';
+            q.answers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.textContent = answer;
+                button.className = 'bg-gray-700 hover:bg-cyan-600 p-4 rounded-lg text-lg transition-colors';
+                button.onclick = () => {
+                    questionModal.classList.add('hidden');
+                    if (index === q.correct) {
+                        showMessage("Resposta Correta!", true);
+                        q.asked = true;
+                        grid[bot.y][bot.x] = TILE.EMPTY;
+                        render();
+                        checkAndOpenDoor();
+                    } else {
+                        handleIncorrectAnswer();
+                    }
+                };
+                answersContainer.appendChild(button);
+            });
+            questionModal.classList.remove('hidden');
+        }
+
+        function moveHunter() {
+            const dx = bot.x - hunter.x;
+            const dy = bot.y - hunter.y;
+            let moveX = 0;
+            let moveY = 0;
+
+            if (Math.abs(dx) >= Math.abs(dy)) {
+                moveX = Math.sign(dx);
+            } else {
+                moveY = Math.sign(dy);
+            }
+            
+            let newHx = hunter.x + moveX;
+            let newHy = hunter.y + moveY;
+
+            if (grid[newHy] && grid[newHy][newHx] !== undefined && grid[newHy][newHx] !== TILE.WALL) {
+                hunter.x = newHx;
+                hunter.y = newHy;
+            } else { 
+                if (Math.abs(dx) < Math.abs(dy)) {
+                    moveX = Math.sign(dx);
+                } else {
+                    moveY = Math.sign(dy);
+                }
+                
+                newHx = hunter.x + moveX;
+                newHy = hunter.y + moveY;
+                
+                if (grid[newHy] && grid[newHy][newHx] !== undefined && grid[newHy][newHx] !== TILE.WALL) {
+                    hunter.x = newHx;
+                    hunter.y = newHy;
+                }
+            }
+
+            if (hunter.x === bot.x && hunter.y === bot.y) {
+                showMessage("Você foi pego!", false);
+                handleIncorrectAnswer();
+            }
+        }
+
+        // --- Race & Final Boss Functions ---
+        let currentRaceStep = 0;
+        function startRaceLevel(level) {
+            currentRaceStep = 0;
+            displayRaceStep(level);
+        }
+
+        function startFinalBoss(level) {
+            storyModal.classList.add('hidden');
+            raceLevelContainer.classList.remove('hidden');
+            finalBossTimer.classList.remove('hidden');
+            currentRaceStep = 0;
+            displayRaceStep(level, true);
+        }
+
+        function displayRaceStep(level, isFinalBoss = false) {
+            if (currentRaceStep >= level.questions.length) {
+                const score = isFinalBoss ? 1000 + (lives * 100) : 250;
+                const message = isFinalBoss ? `Núcleo Lógico Dominado! +${score} pontos` : `Você venceu a corrida! +${score} pontos`;
+                totalScore += score;
+                updateScoreDisplay();
+                showMessage(message, true);
+                setTimeout(() => { currentLevelIndex++; loadLevel(currentLevelIndex); }, 1500);
+                return;
+            }
+
+            const raceProgressEl = document.getElementById('race-progress');
+            const raceQuestionEl = document.getElementById('race-question');
+            const racePathsEl = document.getElementById('race-paths');
+            const q = level.questions[currentRaceStep];
+            raceProgressEl.textContent = `Etapa ${currentRaceStep + 1} de ${level.questions.length}`;
+            raceQuestionEl.textContent = q.question;
+            
+            if (isFinalBoss) {
+                let timeLeft = 15;
+                timerBar.style.width = '100%';
+                timerBar.style.transition = 'width 15s linear';
+                setTimeout(() => { timerBar.style.width = '0%'; }, 100);
+
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        instantGameOver("O tempo acabou! A precisão deve ser absoluta.");
+                    }
+                }, 1000);
+            }
+
+            const shuffledAnswers = q.answers.map((a, i) => ({ text: a, isCorrect: i === q.correct })).sort(() => Math.random() - 0.5);
+            racePathsEl.innerHTML = '';
+            shuffledAnswers.forEach(answer => {
+                const pathDiv = document.createElement('div');
+                pathDiv.className = 'race-path bg-gray-800 border-4 border-gray-600 rounded-lg p-4 w-1/3 h-32 flex items-center justify-center text-center font-semibold text-sm sm:text-base';
+                pathDiv.textContent = answer.text;
+                pathDiv.onclick = () => handleRaceChoice(pathDiv, answer, level, shuffledAnswers, isFinalBoss);
+                racePathsEl.appendChild(pathDiv);
+            });
+        }
+
+        function handleRaceChoice(pathDiv, answer, level, shuffledAnswers, isFinalBoss) {
+            if (isFinalBoss) clearInterval(timerInterval);
+            document.querySelectorAll('.race-path').forEach(p => p.onclick = null);
+            
+            if (answer.isCorrect) {
+                showMessage("Caminho Certo!", true);
+                pathDiv.style.borderColor = '#22d3ee';
+                const raceBot = document.getElementById('race-bot');
+                raceBot.style.transform = 'translateY(-100px) translateX(-50%) scale(1.2)';
+                setTimeout(() => {
+                    currentRaceStep++;
+                    raceBot.style.transition = 'none';
+                    raceBot.style.transform = 'translateY(0) translateX(-50%) scale(1)';
+                    setTimeout(() => {
+                        raceBot.style.transition = 'transform 0.5s ease-in-out';
+                        displayRaceStep(level, isFinalBoss);
+                    }, 50);
+                }, 600);
+            } else {
+                pathDiv.style.borderColor = '#fb923c';
+                if (isFinalBoss) {
+                    instantGameOver("Erro fatal no Núcleo Lógico. Sistema reiniciando.");
+                } else {
+                    handleIncorrectAnswer();
+                    setTimeout(() => {
+                        document.querySelectorAll('.race-path').forEach((p, i) => {
+                             const originalAnswer = shuffledAnswers[i];
+                             p.onclick = () => handleRaceChoice(p, originalAnswer, level, shuffledAnswers, isFinalBoss);
+                        });
+                    }, 1000);
+                }
+            }
+        }
+
+        function instantGameOver(message) {
+            if (timerInterval) clearInterval(timerInterval);
+            mainGameUI.classList.add('hidden');
+            gameOverMessage.textContent = message;
+            gameOverModal.classList.remove('hidden');
+        }
+
+        // --- Utility & Event Listeners ---
+        function showMessage(msg, isSuccess = false) {
+            messageArea.textContent = msg;
+            messageArea.className = `h-8 text-center text-lg font-medium mt-4 ${isSuccess ? 'text-cyan-400' : 'text-orange-500'}`;
+            setTimeout(() => { if (messageArea.textContent === msg) messageArea.textContent = ''; }, 3000);
+        }
+
+        document.getElementById('move-forward').addEventListener('click', () => executeMove('forward'));
+        document.getElementById('turn-left').addEventListener('click', () => executeMove('left'));
+        document.getElementById('turn-right').addEventListener('click', () => executeMove('right'));
+        document.getElementById('light-up').addEventListener('click', () => executeMove('light'));
+        document.getElementById('restart-button').addEventListener('click', showStartScreen);
+        playAgainButton.addEventListener('click', showStartScreen);
+        startButton.addEventListener('click', startGame);
+        playButton.addEventListener('click', playGame);
+        startFinalBossButton.addEventListener('click', () => startFinalBoss(levels[levels.length - 1]));
+        playerNameInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                startGame();
+            }
+        });
+
+        // --- Initialize Game ---
+        showStartScreen();
+    </script>
+</body>
+</html>
