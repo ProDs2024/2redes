@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Desafio Lógico Final</title>
+    <title>Desafio Lógico 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Carrega os níveis a partir do ficheiro externo -->
@@ -47,7 +47,7 @@
     <!-- Main Game UI (hidden initially) -->
     <div id="main-game-ui" class="hidden w-full">
         <div class="w-full max-w-2xl mx-auto text-center mb-4">
-            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400 mb-2">Light Bot: Desafio Lógico</h1>
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400 mb-2">Desafio Lógico final</h1>
             <div class="flex justify-around items-center text-lg sm:text-xl font-semibold">
                 <div id="level-display">Nível 1</div>
                 <div id="score-display">Pontuação: 0</div>
@@ -183,7 +183,7 @@
         let bot = { x: 0, y: 0, dir: DIR.RIGHT };
         let hunter = { x: 0, y: 0 };
         let grid = [];
-        let currentQuestion = null;
+        let sessionLevels = []; // Usado para uma cópia dos níveis por sessão
         let timerInterval = null;
         
         // --- Core Game Functions ---
@@ -210,6 +210,8 @@
             lives = INITIAL_LIVES;
             totalScore = 0;
             startTime = new Date(); // Inicia o cronómetro
+            // Cria uma cópia profunda dos níveis para esta sessão de jogo
+            sessionLevels = JSON.parse(JSON.stringify(levels));
             updateLivesDisplay();
             updateScoreDisplay();
             loadLevel(currentLevelIndex);
@@ -220,7 +222,7 @@
             lightBotContainer.classList.add('hidden');
             raceLevelContainer.classList.add('hidden');
 
-            if (levelIndex >= levels.length) {
+            if (levelIndex >= sessionLevels.length) {
                 const finalLifeBonus = lives * 150;
                 totalScore += finalLifeBonus;
                 const endTime = new Date();
@@ -236,17 +238,15 @@
                 return;
             }
 
-            const level = levels[levelIndex];
+            const level = sessionLevels[levelIndex];
             levelMoves = 0; 
             
-            const raceLevelNumber = levels.findIndex(l => l.type === 'race') + 1;
-            const finalBossLevelNumber = levels.findIndex(l => l.type === 'final_race') + 1;
+            const raceLevelNumber = sessionLevels.findIndex(l => l.type === 'race') + 1;
+            const finalBossLevelNumber = sessionLevels.findIndex(l => l.type === 'final_race') + 1;
 
             if(level.type === 'race') levelDisplay.textContent = `Nível ${raceLevelNumber}: Mini-Chefe`;
             else if(level.type === 'final_race') levelDisplay.textContent = `Nível ${finalBossLevelNumber}: CHEFE FINAL`;
             else levelDisplay.textContent = `Nível ${levelIndex + 1}`;
-
-            if(level.questions) level.questions.forEach(q => q.asked = false);
 
             if (level.type === 'final_race') {
                 storyModal.classList.remove('hidden');
@@ -276,16 +276,10 @@
                 gameOverModal.classList.remove('hidden');
             } else {
                 showMessage("Você perdeu uma vida! O nível foi reiniciado.", false);
-                const level = levels[currentLevelIndex];
+                const level = sessionLevels[currentLevelIndex];
                 if (level.type !== 'race' && level.type !== 'final_race') {
                     // Reseta o estado completo do nível
-                    grid = level.grid.map(row => [...row]);
-                    bot = { ...level.start };
-                    if (level.hunterStart) {
-                        hunter = { ...level.hunterStart };
-                    }
-                    level.questions.forEach(q => q.asked = false);
-                    render();
+                    loadLevel(currentLevelIndex);
                 }
             }
         }
@@ -314,7 +308,7 @@
                         botDiv.innerHTML = `<svg viewBox="0 0 24 24" width="70%" height="70%"><polygon points="12,2 20,12 14,12 14,22 10,22 10,12 4,12" fill="#083344"/></svg>`;
                         cellDiv.appendChild(botDiv);
                     }
-                    if (levels[currentLevelIndex].hunterStart && hunter.x === x && hunter.y === y) {
+                    if (sessionLevels[currentLevelIndex].hunterStart && hunter.x === x && hunter.y === y) {
                         const hunterDiv = document.createElement('div');
                         hunterDiv.className = 'w-3/4 h-3/4 bg-red-600 rounded-md';
                         cellDiv.appendChild(hunterDiv);
@@ -326,7 +320,7 @@
 
         function checkAndOpenDoor() {
             const lightsLeft = grid.flat().some(cell => cell === TILE.LIGHT_OFF);
-            const allQuestionsAnswered = levels[currentLevelIndex].questions.every(q => q.asked);
+            const allQuestionsAnswered = sessionLevels[currentLevelIndex].questions.every(q => q.asked);
             if (!lightsLeft && allQuestionsAnswered) {
                 for (let y = 0; y < grid.length; y++) {
                     for (let x = 0; x < grid[y].length; x++) {
@@ -363,15 +357,15 @@
                 } else { showMessage("Não há nada para acender aqui."); }
             }
             
-            if (levels[currentLevelIndex].hunterStart && moved) {
+            if (sessionLevels[currentLevelIndex].hunterStart && moved) {
                 moveHunter();
             }
             
             render();
 
             if (grid[bot.y][bot.x] === TILE.DOOR_OPEN) {
-                const level = levels[currentLevelIndex];
-                const moveBonus = Math.max(0, 50 - (levelMoves - level.par) * 5);
+                const level = sessionLevels[currentLevelIndex];
+                const moveBonus = Math.max(0, 100 - (levelMoves - level.par) * 5);
                 const levelScore = 100 + moveBonus;
                 totalScore += levelScore;
                 updateScoreDisplay();
@@ -383,10 +377,9 @@
             if (action === 'light') checkAndOpenDoor();
 
             if (grid[bot.y][bot.x] === TILE.QUESTION) {
-                const unasked = levels[currentLevelIndex].questions.filter(q => !q.asked);
+                const unasked = sessionLevels[currentLevelIndex].questions.filter(q => !q.asked);
                 if (unasked.length > 0) {
-                    currentQuestion = unasked[0];
-                    displayQuestion(currentQuestion);
+                    displayQuestion(unasked[0]);
                 }
             }
         }
@@ -401,9 +394,9 @@
                 button.onclick = () => {
                     questionModal.classList.add('hidden');
                     if (index === q.correct) {
-                        totalScore += 10;
+                        totalScore += 25;
                         updateScoreDisplay();
-                        showMessage("Resposta Correta! +10 pontos", true);
+                        showMessage("Resposta Correta! +25 pontos", true);
                         q.asked = true;
                         grid[bot.y][bot.x] = TILE.EMPTY;
                         render();
@@ -475,7 +468,7 @@
         function displayRaceStep(level, isFinalBoss = false) {
             if (currentRaceStep >= level.questions.length) {
                 const score = isFinalBoss ? 500 : 250;
-                const message = isFinalBoss ? `Núcleo Lógico Dominado de verdade agora! +${score} pontos` : `Você venceu a corrida! +${score} pontos`;
+                const message = isFinalBoss ? `Núcleo Lógico Dominado! +${score} pontos` : `Você venceu a corrida real! +${score} pontos`;
                 totalScore += score;
                 updateScoreDisplay();
                 showMessage(message, true);
