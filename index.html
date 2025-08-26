@@ -270,13 +270,16 @@
                 gameOverMessage.textContent = `A lógica é um caminho de tentativas. Não desista, ${playerName}! Tente novamente e ilumine seu conhecimento.`;
                 gameOverModal.classList.remove('hidden');
             } else {
-                showMessage("Você perdeu uma vida!", false);
+                showMessage("Você perdeu uma vida! O nível foi reiniciado.", false);
                 const level = levels[currentLevelIndex];
                 if (level.type !== 'race' && level.type !== 'final_race') {
+                    // Reseta o estado completo do nível
+                    grid = level.grid.map(row => [...row]);
                     bot = { ...level.start };
                     if (level.hunterStart) {
                         hunter = { ...level.hunterStart };
                     }
+                    level.questions.forEach(q => q.asked = false);
                     render();
                 }
             }
